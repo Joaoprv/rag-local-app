@@ -84,7 +84,6 @@ def get_chat_chain(llm: Any, vectorstore: FAISS) -> RunnableWithMessageHistory:
         logger.debug(f"Formatted {len(docs)} documents for context")
         return formatted
     
-    # Modern prompt template
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful AI assistant. Use the following context to answer questions accurately and concisely.
 

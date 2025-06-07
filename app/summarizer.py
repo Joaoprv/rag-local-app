@@ -1,5 +1,5 @@
 import logging
-from langchain_community.llms import HuggingFacePipeline
+from langchain_huggingface import HuggingFacePipeline
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -19,7 +19,7 @@ Por favor, resuma o seguinte texto de forma clara e concisa, destacando os ponto
 Texto: {text}
 
 Resumo em português:"""
-    else:  # English
+    else:
         template = """You are a document summarization specialist.
 
 Please provide a clear and concise summary of the following text, highlighting the main points:
@@ -129,72 +129,3 @@ def summarize(text, llm, language="português", max_chunk_size=2000):
     except Exception as e:
         logger.error(f"Error in summarization: {e}")
         return f"Error generating summary: {str(e)}"
-
-
-def summarize_with_questions(text, llm, questions=None, language="português"):
-    """
-    Generate a summary focused on specific questions or aspects.
-    
-    Args:
-        text (str): Text to summarize  
-        llm: Language model to use
-        questions (list): Specific questions to focus on
-        language (str): Language for the summary
-    
-    Returns:
-        str: Focused summary
-    """
-    
-    logger.info(f"Starting focused summarization with {len(questions) if questions else 0} questions")
-    
-    if questions is None:
-        questions = [
-            "Quais são os principais tópicos abordados?",
-            "Quais são as conclusões principais?", 
-            "Existem dados ou estatísticas importantes?"
-        ] if language == "português" else [
-            "What are the main topics covered?",
-            "What are the key conclusions?",
-            "Are there important data or statistics?"
-        ]
-        logger.debug(f"Using default questions for language: {language}")
-    
-    questions_text = "\n".join(f"- {q}" for q in questions)
-    
-    if language.lower() == "português":
-        template = f"""Baseado no texto fornecido, responda às seguintes perguntas para criar um resumo focado:
-
-{questions_text}
-
-Texto: {{text}}
-
-Resumo estruturado:"""
-    else:
-        template = f"""Based on the provided text, answer the following questions to create a focused summary:
-
-{questions_text}
-
-Text: {{text}}
-
-Structured summary:"""
-    
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template=template
-    )
-    
-    chain = prompt | llm
-    
-    try:
-        logger.debug("Generating focused summary")
-        result = chain.invoke({"text": text})
-        if isinstance(result, dict):
-            summary = result.get("text", str(result))
-        else:
-            summary = str(result)
-        
-        logger.info("Focused summarization completed successfully")
-        return summary
-    except Exception as e:
-        logger.error(f"Error generating focused summary: {e}")
-        return f"Error generating focused summary: {str(e)}"
