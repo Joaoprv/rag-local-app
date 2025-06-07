@@ -64,14 +64,18 @@ A local Retrieval-Augmented Generation (RAG) application that allows you to uplo
 
 ```
 rag-local-app/
-├── main.py              # Application entry point
+├── main.py
+├── logging_config.py         
 ├── app/
-│   ├── interface.py     # Gradio UI interface
-│   ├── chat_rag.py      # RAG chain implementation
-│   ├── summarizer.py    # Document summarization
-│   └── pdf_loader.py    # PDF text extraction
-├── pyproject.toml       # Dependencies
-└── README.md           # This file
+│   ├── interface.py
+│   ├── chat_rag.py
+│   ├── summarizer.py
+│   └── pdf_loader.py
+├── prompts/
+│   ├── loader.py
+│   ├── summarizer_prompts.py
+├── pyproject.toml
+└── README.md
 ```
 
 ## Troubleshooting 🔍
