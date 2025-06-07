@@ -13,6 +13,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Global chat history storage
+chat_sessions = {}
+
 def build_vector_store(text: str) -> FAISS:
     """Build FAISS vector store from text using modern components.
     
@@ -63,11 +66,11 @@ def get_chat_chain(llm: Any, vectorstore: FAISS) -> RunnableWithMessageHistory:
         search_kwargs={"k": 4}
     )
     
-    # Create chat message history
-    chat_history = ChatMessageHistory()
-    
     def get_session_history(session_id: str) -> ChatMessageHistory:
-        return chat_history
+        """Get or create chat history for a session."""
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = ChatMessageHistory()
+        return chat_sessions[session_id]
     
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
@@ -83,19 +86,19 @@ If you cannot find the answer in the context, please say so clearly."""),
         ("human", "{question}")
     ])
     
-    # Modern LCEL chain
+    # Modern LCEL chain - FIXED: Include all required variables
     rag_chain = (
         {
-            "context": retriever | RunnableLambda(format_docs),
-            "question": RunnablePassthrough(),
-            "chat_history": RunnableLambda(lambda x: chat_history.messages),
+            "context": lambda x: format_docs(retriever.invoke(x["question"])),
+            "question": lambda x: x["question"],
+            "chat_history": lambda x: [], 
         }
         | prompt
         | llm
         | StrOutputParser()
     )
     
-    # Add conversation memory
+    # Add conversation memory with proper session management
     conversational_rag_chain = RunnableWithMessageHistory(
         rag_chain,
         get_session_history,

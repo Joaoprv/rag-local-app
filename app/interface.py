@@ -124,7 +124,10 @@ def chat_with_pdf(user_input):
         return "❌ Please upload and process a PDF first!"
     
     try:
-        response = chat_chain.invoke({"question": user_input})
+        # Add session_id config for RunnableWithMessageHistory
+        config = {"configurable": {"session_id": "default_session"}}
+        response = chat_chain.invoke({"question": user_input}, config)
+        
         # Handle different response formats
         if isinstance(response, dict):
             return response.get("answer", response.get("result", str(response)))
