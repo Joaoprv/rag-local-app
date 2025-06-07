@@ -86,7 +86,6 @@ If you cannot find the answer in the context, please say so clearly."""),
         ("human", "{question}")
     ])
     
-    # Modern LCEL chain - FIXED: Include all required variables
     rag_chain = (
         {
             "context": lambda x: format_docs(retriever.invoke(x["question"])),
@@ -98,7 +97,6 @@ If you cannot find the answer in the context, please say so clearly."""),
         | StrOutputParser()
     )
     
-    # Add conversation memory with proper session management
     conversational_rag_chain = RunnableWithMessageHistory(
         rag_chain,
         get_session_history,
