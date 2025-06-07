@@ -1,16 +1,13 @@
+import logging
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from typing import Any
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Global chat history storage
@@ -25,6 +22,8 @@ def build_vector_store(text: str) -> FAISS:
     Returns:
         FAISS vector store
     """
+    logger.info("Building vector store from text")
+    
     # Modern text splitter with better parameters
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500, 
@@ -33,8 +32,10 @@ def build_vector_store(text: str) -> FAISS:
         is_separator_regex=False
     )
     chunks = splitter.split_text(text)
+    logger.info(f"Text split into {len(chunks)} chunks")
     
     # Modern embeddings with optimized settings
+    logger.info("Loading embeddings model")
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2",
         model_kwargs={'device': 'cpu'},
@@ -42,12 +43,14 @@ def build_vector_store(text: str) -> FAISS:
     )
     
     # Create vector store with metadata
+    logger.info("Creating FAISS vector store")
     vectorstore = FAISS.from_texts(
         chunks, 
         embedding=embeddings,
         metadatas=[{"chunk_id": i} for i in range(len(chunks))]
     )
     
+    logger.info("Vector store created successfully")
     return vectorstore
 
 def get_chat_chain(llm: Any, vectorstore: FAISS) -> RunnableWithMessageHistory:
@@ -60,20 +63,26 @@ def get_chat_chain(llm: Any, vectorstore: FAISS) -> RunnableWithMessageHistory:
     Returns:
         Modern conversational chain with message history
     """
+    logger.info("Creating conversational RAG chain")
+    
     # Setup retriever
     retriever = vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 4}
     )
+    logger.debug("Retriever configured with k=4 similarity search")
     
     def get_session_history(session_id: str) -> ChatMessageHistory:
         """Get or create chat history for a session."""
         if session_id not in chat_sessions:
+            logger.debug(f"Creating new chat session: {session_id}")
             chat_sessions[session_id] = ChatMessageHistory()
         return chat_sessions[session_id]
     
     def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
+        formatted = "\n\n".join(doc.page_content for doc in docs)
+        logger.debug(f"Formatted {len(docs)} documents for context")
+        return formatted
     
     # Modern prompt template
     prompt = ChatPromptTemplate.from_messages([
@@ -104,4 +113,5 @@ If you cannot find the answer in the context, please say so clearly."""),
         history_messages_key="chat_history",
     )
     
+    logger.info("Conversational RAG chain created successfully")
     return conversational_rag_chain
