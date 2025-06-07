@@ -1,8 +1,7 @@
 import logging
-from langchain_huggingface import HuggingFacePipeline
-from langchain.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from prompts.loader import get_summarizer_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -11,27 +10,7 @@ def get_summarizer_chain(llm, language="português") -> Runnable:
     
     logger.debug(f"Creating summarizer chain for language: {language}")
     
-    if language.lower() == "português":
-        template = """Você é um assistente especializado em resumir documentos. 
-        
-Por favor, resuma o seguinte texto de forma clara e concisa, destacando os pontos principais:
-
-Texto: {text}
-
-Resumo em português:"""
-    else:
-        template = """You are a document summarization specialist.
-
-Please provide a clear and concise summary of the following text, highlighting the main points:
-
-Text: {text}
-
-Summary:"""
-    
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template=template
-    )
+    prompt = get_summarizer_prompt(language)
     
     return prompt | llm
 
