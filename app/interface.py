@@ -2,6 +2,7 @@ import gradio as gr
 from app.pdf_loader import extract_text_from_pdf
 from app.summarizer import summarize
 from app.chat_rag import build_vector_store, get_chat_chain
+from models.models import AppState, ModelType
 from langchain_huggingface import HuggingFacePipeline
 from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 import torch
@@ -9,16 +10,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Global variables to store state
-current_llm = None
-chat_chain = None
+app_state = AppState()
 
-def load_llm(model_name="tiiuae/falcon-rw-1b"):
+def load_llm(model_type: ModelType):
     """Load the specified language model with better error handling."""
     try:
+        model_name = model_type.value
         logger.info(f"Loading model: {model_name}")
         
-        if model_name == "tiiuae/falcon-rw-1b":
+        if model_type == ModelType.FALCON:
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             # Add padding token if not present
             if tokenizer.pad_token is None:
@@ -42,7 +42,7 @@ def load_llm(model_name="tiiuae/falcon-rw-1b"):
             logger.info(f"Successfully loaded model: {model_name}")
             return HuggingFacePipeline(pipeline=pipe)
             
-        elif model_name == "meta-llama/llama-2-7b-chat-hf":
+        elif model_type == ModelType.LLAMA:
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             if tokenizer.pad_token is None:
                 tokenizer.pad_token = tokenizer.eos_token
@@ -65,37 +65,37 @@ def load_llm(model_name="tiiuae/falcon-rw-1b"):
             logger.info(f"Successfully loaded model: {model_name}")
             return HuggingFacePipeline(pipeline=pipe)
         else:
-            raise ValueError(f"Invalid model: {model_name}")
+            raise ValueError(f"Invalid model: {model_type}")
             
     except Exception as e:
         logger.error(f"Error loading model {model_name}: {str(e)}")
         return None
 
-def update_llm(model_name):
-    """Update the global LLM with better state management."""
-    global current_llm, chat_chain
-    
+def update_llm(model_name_str):
+    """Update the LLM using the AppState object."""
     try:
-        logger.info(f"Updating LLM to: {model_name}")
-        new_llm = load_llm(model_name)
+        model_type = ModelType(model_name_str)
+        logger.info(f"Updating LLM to: {model_type.value}")
+        
+        new_llm = load_llm(model_type)
         if new_llm is not None:
-            current_llm = new_llm
-            # Reset chat chain when model changes
-            chat_chain = None
-            logger.info(f"Successfully updated LLM to: {model_name}")
-            return f"✅ Model '{model_name}' loaded successfully!"
+            app_state.llm = new_llm
+            app_state.current_model = model_type
+            app_state.reset_chat_chain()
+            logger.info(f"Successfully updated LLM to: {model_type.value}")
+            return f"✅ Model '{model_type.value}' loaded successfully!"
         else:
-            logger.warning(f"Failed to load model: {model_name}")
-            return f"❌ Failed to load model '{model_name}'"
+            logger.warning(f"Failed to load model: {model_type.value}")
+            return f"❌ Failed to load model '{model_type.value}'"
+    except ValueError:
+        return f"❌ Invalid model name: {model_name_str}"
     except Exception as e:
         logger.error(f"Error updating LLM: {str(e)}")
         return f"❌ Error loading model: {str(e)}"
 
 def process_pdf(file):
-    """Process PDF with better error handling and state management."""
-    global current_llm, chat_chain
-    
-    if current_llm is None:
+    """Process PDF using the AppState object."""
+    if app_state.llm is None:
         logger.warning("PDF processing attempted without loaded model")
         return "❌ Please load a model first!"
     
@@ -114,12 +114,13 @@ def process_pdf(file):
         logger.info(f"Extracted {len(text)} characters from PDF")
 
         logger.info("Generating document summary")
-        summary = summarize(text, current_llm)
+        summary = summarize(text, app_state.llm)
         
         logger.info("Building vector store")
         vectorstore = build_vector_store(text)
         logger.info("Creating chat chain")
-        chat_chain = get_chat_chain(current_llm, vectorstore)
+        app_state.chat_chain = get_chat_chain(app_state.llm, vectorstore)
+        app_state.document_processed = True
         
         logger.info("PDF processing completed successfully")
         return f"✅ PDF processed successfully!\n\n📄 Summary:\n{summary}"
@@ -127,16 +128,13 @@ def process_pdf(file):
     except Exception as e:
         logger.error(f"Error processing PDF: {str(e)}")
         return f"❌ Error processing PDF: {str(e)}"
-
 def chat_with_pdf(user_input):
-    """Chat with PDF with better error handling."""
-    global chat_chain
-    
+    """Chat with PDF"""
     if not user_input.strip():
         logger.warning("Empty chat input received")
         return "Please enter a question."
     
-    if chat_chain is None:
+    if app_state.chat_chain is None:
         logger.warning("Chat attempted without processed PDF")
         return "❌ Please upload and process a PDF first!"
     
@@ -144,7 +142,7 @@ def chat_with_pdf(user_input):
         logger.info(f"Processing chat question: {user_input[:100]}...")
         
         config = {"configurable": {"session_id": "default_session"}}
-        response = chat_chain.invoke({"question": user_input}, config)
+        response = app_state.chat_chain.invoke({"question": user_input}, config)
         
         if isinstance(response, dict):
             result = response.get("answer", response.get("result", str(response)))
@@ -160,8 +158,9 @@ def chat_with_pdf(user_input):
 
 
 logger.info("Initializing with default model...")
-current_llm = load_llm()
 
+app_state.llm = load_llm(ModelType.FALCON)
+app_state.current_model = ModelType.FALCON
 
 demo = gr.Blocks(title="RAG PDF Chat", theme=gr.themes.Soft())
 
@@ -172,8 +171,8 @@ with demo:
     with gr.Row():
         with gr.Column(scale=2):
             model_selector = gr.Dropdown(
-                choices=["tiiuae/falcon-rw-1b", "meta-llama/llama-2-7b-chat-hf"],
-                value="tiiuae/falcon-rw-1b",
+                choices=[model.value for model in ModelType],
+                value=ModelType.FALCON.value,
                 label="🤖 Select Language Model",
                 info="Choose the AI model to use for processing"
             )
