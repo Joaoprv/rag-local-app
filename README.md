@@ -70,10 +70,13 @@ rag-local-app/
 │   ├── interface.py
 │   ├── chat_rag.py
 │   ├── summarizer.py
-│   └── pdf_loader.py
+│   ├── llm_service.py
+│   └── pdf_service.py
 ├── prompts/
 │   ├── loader.py
 │   ├── summarizer_prompts.py
+├── models/
+│   ├── models.py
 ├── pyproject.toml
 └── README.md
 ```
