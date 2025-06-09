@@ -6,9 +6,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-llm_service = LLMService()
-app_state = AppState()
-
 def update_llm(model_name_str):
     """Update the LLM using the LLMService."""
     try:
@@ -62,6 +59,9 @@ def chat_with_pdf(user_input):
         logger.error(f"Error in chat: {str(e)}")
         return f"❌ Error generating response: {str(e)}"
 
+
+llm_service = LLMService()
+app_state = AppState()
 
 logger.info("Initializing with default model...")
 
@@ -136,7 +136,7 @@ with demo:
     
     pdf_input.change(
         fn=process_pdf, 
-        inputs=[pdf_input], 
+        inputs=[pdf_input, gr.State(value=app_state)], 
         outputs=[summary_output]
     )
     
