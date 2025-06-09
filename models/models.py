@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional, Any
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ModelType(Enum):
     FALCON = "tiiuae/falcon-rw-1b"
