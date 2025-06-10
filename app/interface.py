@@ -6,6 +6,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# TODO: Move update_llm to LLMService and chat_with_pdf to chat_rag 
+
 def update_llm(model_name_str):
     """Update the LLM using the LLMService."""
     try:
