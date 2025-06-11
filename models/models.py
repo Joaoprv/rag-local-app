@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 class ModelType(Enum):
     FALCON = "tiiuae/falcon-rw-1b"
     LLAMA = "meta-llama/llama-2-7b-chat-hf"
-
+    QWEN = "Qwen/Qwen3-1.7B"
+    
 @dataclass
 class AppState:
     llm: Optional[Any] = None

@@ -36,7 +36,7 @@ class LLMService:
         
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            torch_dtype="auto",
             device_map="auto" if torch.cuda.is_available() else None
         )
         
@@ -48,8 +48,8 @@ class LLMService:
             "text-generation",
             model=model,
             tokenizer=tokenizer,
-            max_new_tokens=256,
+            max_new_tokens=1024,
             do_sample=True,
-            temperature=0.7,
+            temperature=0.01,
             pad_token_id=tokenizer.eos_token_id
         )

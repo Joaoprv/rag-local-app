@@ -67,8 +67,8 @@ app_state = AppState()
 
 logger.info("Initializing with default model...")
 
-app_state.llm = llm_service.load_model(ModelType.FALCON)
-app_state.current_model = ModelType.FALCON
+app_state.llm = llm_service.load_model(ModelType.QWEN)
+app_state.current_model = ModelType.QWEN
 
 demo = gr.Blocks(title="RAG PDF Chat", theme=gr.themes.Soft())
 
@@ -80,7 +80,7 @@ with demo:
         with gr.Column(scale=2):
             model_selector = gr.Dropdown(
                 choices=[model.value for model in ModelType],
-                value=ModelType.FALCON.value,
+                value=ModelType.QWEN.value,
                 label="🤖 Select Language Model",
                 info="Choose the AI model to use for processing"
             )
